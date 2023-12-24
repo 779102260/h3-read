@@ -11,13 +11,22 @@ import { hasProp } from "./internal/object";
 const defer =
   typeof setImmediate === "undefined" ? (fn: () => any) => fn() : setImmediate;
 
+/**
+ * 
+ * @param event 
+ * @param data 
+ * @param type 响应格式，比如"text/html" 
+ * @returns 
+ */
 export function send(event: H3Event, data?: any, type?: string): Promise<void> {
   if (type) {
+    // 设置response header content-type
     defaultContentType(event, type);
   }
   return new Promise((resolve) => {
     defer(() => {
       if (!event.handled) {
+        // * 设置响应内容
         event.node.res.end(data);
       }
       resolve();

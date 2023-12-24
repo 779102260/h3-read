@@ -68,19 +68,24 @@ export interface App {
   use: AppUse;
 }
 
+/** 创建app */
 export function createApp(options: AppOptions = {}): App {
   const stack: Stack = [];
   const handler = createAppEventHandler(stack, options);
   const app: App = {
     // @ts-ignore
     use: (arg1, arg2, arg3) => use(app as App, arg1, arg2, arg3),
+    /** 路由处理函数 */
     handler,
+    /** 路由栈 */
     stack,
+    /** 配置项 */
     options,
   };
   return app;
 }
 
+/** 增加路由 */
 export function use(
   app: App,
   arg1: string | EventHandler | InputLayer | InputLayer[],
@@ -109,6 +114,7 @@ export function use(
   return app;
 }
 
+/** 创建路由处理函数 */
 export function createAppEventHandler(stack: Stack, options: AppOptions) {
   const spacing = options.debug ? 2 : undefined;
 
@@ -128,6 +134,10 @@ export function createAppEventHandler(stack: Stack, options: AppOptions) {
       await options.onRequest(event);
     }
 
+    // * 匹配路由
+    // TODO 非常糟糕的设计，把router匹配和中间件混合在一起
+    // TODO RM router功能，只做中间件
+    // TODO 但是这种中间件只能执行一次，不如koa设计，看看后面怎么解决
     for (const layer of stack) {
       // 1. Remove prefix from path
       if (layer.route.length > 1) {
@@ -149,6 +159,7 @@ export function createAppEventHandler(stack: Stack, options: AppOptions) {
       event.node.req.url = _layerPath;
 
       // 4. Handle request
+      // * 执行路由对应的执行函数
       const val = await layer.handler(event);
 
       // 5. Try to handle return value
@@ -158,6 +169,7 @@ export function createAppEventHandler(stack: Stack, options: AppOptions) {
         if (options.onBeforeResponse) {
           await options.onBeforeResponse(event, _response);
         }
+        // * 处理请求
         await handleHandlerResponse(event, _response.body, spacing);
         if (options.onAfterResponse) {
           await options.onAfterResponse(event, _response);
@@ -187,6 +199,7 @@ export function createAppEventHandler(stack: Stack, options: AppOptions) {
   });
 }
 
+/** 序列化Layer */
 function normalizeLayer(input: InputLayer) {
   let handler = input.handler;
   // @ts-ignore
@@ -202,18 +215,21 @@ function normalizeLayer(input: InputLayer) {
   }
 
   return {
+    // 移除给定 URL 路径的尾部斜杠
     route: withoutTrailingSlash(input.route),
     match: input.match,
     handler,
   } as Layer;
 }
 
+/** 响应函数 */
 function handleHandlerResponse(event: H3Event, val: any, jsonSpace?: number) {
   // Empty Content
   if (val === null) {
     return sendNoContent(event);
   }
 
+  // * 特殊响应数据格式
   if (val) {
     // Web Response
     if (isWebResponse(val)) {
@@ -251,16 +267,19 @@ function handleHandlerResponse(event: H3Event, val: any, jsonSpace?: number) {
   const valType = typeof val;
 
   // HTML String
+  // 返回字符串
   if (valType === "string") {
     return send(event, val, MIMES.html);
   }
 
   // JSON Response
+  // 返回json
   if (valType === "object" || valType === "boolean" || valType === "number") {
     return send(event, JSON.stringify(val, undefined, jsonSpace), MIMES.json);
   }
 
   // BigInt
+  // 返回bigint
   if (valType === "bigint") {
     return send(event, val.toString(), MIMES.json);
   }

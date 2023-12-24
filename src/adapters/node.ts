@@ -55,6 +55,7 @@ export function toNodeListener(app: App): NodeListener {
   const toNodeHandle: NodeListener = async function (req, res) {
     const event = createEvent(req, res);
     try {
+      // *
       await app.handler(event);
     } catch (_error: any) {
       const error = createError(_error);

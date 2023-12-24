@@ -41,10 +41,16 @@ export interface RouteNode {
 export interface CreateRouterOptions {
   /** @deprecated Please use `preemptive` instead. **/
   preemtive?: boolean;
+  // 中文：抢占式路由
   preemptive?: boolean;
 }
 
+/**
+ * 创建路由，比较灵活
+ * 
+ */
 export function createRouter(opts: CreateRouterOptions = {}): Router {
+  // * 核心依赖 radix3 创建路由匹配器
   const _router = _createRouter<RouteNode>({});
   const routes: Record<string, RouteNode> = {};
 
@@ -61,6 +67,7 @@ export function createRouter(opts: CreateRouterOptions = {}): Router {
     let route = routes[path];
     if (!route) {
       routes[path] = route = { path, handlers: {} };
+      // *
       _router.insert(path, route);
     }
     if (Array.isArray(method)) {
@@ -68,6 +75,7 @@ export function createRouter(opts: CreateRouterOptions = {}): Router {
         addRoute(path, handler, m);
       }
     } else {
+      // *
       route.handlers[method] = toEventHandler(handler, undefined, path);
     }
     return router;
@@ -75,6 +83,7 @@ export function createRouter(opts: CreateRouterOptions = {}): Router {
 
   router.use = router.add = (path, handler, method) =>
     addRoute(path, handler as EventHandler, method || "all");
+  // * 支持get post ...
   for (const method of RouterMethods) {
     router[method] = (path, handle) => router.add(path, handle, method);
   }
@@ -89,6 +98,7 @@ export function createRouter(opts: CreateRouterOptions = {}): Router {
     }
 
     // Match route
+    // * 匹配路由
     const matched = _router.lookup(path);
     if (!matched || !matched.handlers) {
       if (opts.preemptive || opts.preemtive) {
@@ -111,6 +121,7 @@ export function createRouter(opts: CreateRouterOptions = {}): Router {
       matched.handlers[method] || matched.handlers.all;
 
     // Fallback to search for shadowed routes
+    // 回退以搜索被遮蔽的路线
     if (!handler) {
       if (!_matcher) {
         _matcher = toRouteMatcher(_router);
@@ -150,10 +161,12 @@ export function createRouter(opts: CreateRouterOptions = {}): Router {
     event.context.params = params;
 
     // Call handler
+    // * 执行匹配的理由
     return Promise.resolve(handler(event)).then((res) => {
       if (res === undefined && (opts.preemptive || opts.preemtive)) {
         return null; // Send empty content
       }
+      // *
       return res;
     });
   });
